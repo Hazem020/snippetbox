@@ -3,19 +3,20 @@ package main
 import (
 	"context"
 	"flag"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
-
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"snippetbox.hazem/internal/models"
 )
 
 type application struct {
-	errorLog *log.Logger
-	infoLog  *log.Logger
-	snippets *models.SnippetModel
+	errorLog      *log.Logger
+	infoLog       *log.Logger
+	snippets      *models.SnippetModel
+	templateCache map[string]*template.Template
 }
 
 func connectDB() (*mongo.Client, error) {
@@ -34,6 +35,10 @@ func main() {
 	defer client.Disconnect(context.TODO())
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		errorLog.Fatal(err)
+	}
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
@@ -42,6 +47,7 @@ func main() {
 			Database:   client.Database("Snippetbox"),
 			Collection: client.Database("Snippetbox").Collection("snippets"),
 		},
+		templateCache: templateCache,
 	}
 	mux := app.routes()
 
@@ -52,6 +58,6 @@ func main() {
 	}
 	infoLog.Printf("Starting server on %s", *addr)
 	// Call the ListenAndServe() method on our new http.Server struct.
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	errorLog.Fatal(err)
 }
