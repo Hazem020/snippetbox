@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
+	"time"
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -12,20 +12,16 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/partials/nav.tmpl",
-		"./ui/html/pages/home.tmpl",
-	}
-	ts, err := template.ParseFiles(files...)
+
+	snippets, err := app.snippets.Latest()
+	data := app.newTemplateData(r)
+	data.Snippets = snippets
 	if err != nil {
 		app.serverError(w, err)
 		return
+
 	}
-	err = ts.ExecuteTemplate(w, "base", nil)
-	if err != nil {
-		app.serverError(w, err)
-	}
+	app.render(w, http.StatusOK, "home.tmpl", data)
 }
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
@@ -34,13 +30,12 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	data, err := json.Marshal(snippet)
-	if err != nil {
-		app.serverError(w, err)
-		return
+
+	data := &templateData{
+		Snippet: snippet,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(fmt.Sprintf("%+v", string(data))))
+	app.render(w, http.StatusOK, "view.tmpl", data)
+
 }
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -69,4 +64,10 @@ func (app *application) snippetLatest(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(fmt.Sprintf("%+v", string(data))))
+}
+
+func (app *application) newTemplateData(r *http.Request) *templateData {
+	return &templateData{
+		CurrentYear: time.Now().Year(),
+	}
 }
