@@ -35,7 +35,7 @@ func (m *SnippetModel) Insert(user_id string, title string, content string, expi
 		Title:   title,
 		Content: content,
 		Created: time.Now(),
-		Expires: time.Now().Add(time.Duration(expires) * time.Second),
+		Expires: time.Now().Add(time.Duration(expires) * 24 * time.Hour),
 		Public:  false,
 	}
 
@@ -45,8 +45,8 @@ func (m *SnippetModel) Insert(user_id string, title string, content string, expi
 		return "", err
 	}
 
-	insertedID := result.InsertedID.(primitive.ObjectID)
-	return insertedID.String(), nil
+	insertedID := result.InsertedID.(primitive.ObjectID).Hex()
+	return insertedID, nil
 }
 
 // This will return a specific snippet based on its id.
