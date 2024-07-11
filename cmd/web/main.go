@@ -3,20 +3,25 @@ package main
 import (
 	"context"
 	"flag"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/alexedwards/scs/mongodbstore"
+	"github.com/alexedwards/scs/v2"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"snippetbox.hazem/internal/models"
 )
 
 type application struct {
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
+	errorLog       *log.Logger
+	infoLog        *log.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	sessionManager *scs.SessionManager
 }
 
 func connectDB() (*mongo.Client, error) {
@@ -39,6 +44,9 @@ func main() {
 	if err != nil {
 		errorLog.Fatal(err)
 	}
+	sessionManager := scs.New()
+	sessionManager.Store = mongodbstore.New(client.Database(("Snippetbox")))
+	sessionManager.Lifetime = 12 * time.Hour
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
@@ -47,7 +55,8 @@ func main() {
 			Database:   client.Database("Snippetbox"),
 			Collection: client.Database("Snippetbox").Collection("snippets"),
 		},
-		templateCache: templateCache,
+		templateCache:  templateCache,
+		sessionManager: sessionManager,
 	}
 	mux := app.routes()
 
