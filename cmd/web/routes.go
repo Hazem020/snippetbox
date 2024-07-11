@@ -1,15 +1,19 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
 
-// The routes() method returns a servemux containing our application routes.
-func (app *application) routes() *http.ServeMux {
-	mux := http.NewServeMux()
+	"github.com/julienschmidt/httprouter"
+)
+
+func (app *application) routes() http.Handler {
+	router := httprouter.New()
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
-	mux.HandleFunc("/", app.home)
-	mux.HandleFunc("/snippet/view/", app.snippetView)
-	mux.HandleFunc("/snippet/create", app.snippetCreate)
-	mux.HandleFunc("/snippet/latest", app.snippetLatest)
-	return mux
+	router.Handler(http.MethodGet, "/static/", http.StripPrefix("/static", fileServer))
+	router.HandlerFunc(http.MethodGet, "/", app.home)
+	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippetView)
+	router.HandlerFunc(http.MethodPost, "/snippet/create", app.snippetCreate)
+	router.HandlerFunc(http.MethodGet, "/snippet/latest", app.snippetLatest)
+	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreateForm)
+	return app.recoverPanic(app.logRequest(secureHeaders(router)))
 }
